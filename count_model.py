@@ -1,4 +1,5 @@
 # The aim is to write the code in python first then trasncribe to C++
+# First aim is to do proton tracking
 # This model essentially counts the charge on the inner sphere due to protons leaving a positive charge and holes leaving to be filled by electrons on the outer sphere
 # make the outer circle radius 4 and the inner circle radius 1
 
