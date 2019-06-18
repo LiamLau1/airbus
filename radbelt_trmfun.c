@@ -132,7 +132,7 @@ double simulate (double radius, double lat) {
    /*
     * Proton energy in units MeV
     */
-   En[0] = 0.1;
+   En[0] = 1;
    En[1] = 0.2;
    En[2] = 0.3;
    En[3] = 0.4;

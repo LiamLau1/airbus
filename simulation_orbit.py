@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from ctypes import *
 from math import acos
 from numpy import sqrt, sin, cos, pi
@@ -129,14 +130,8 @@ if __name__=="__main__":
     r_Roadster = np.sqrt((Rpos**2).sum(axis=0))
     alt_roadster = r_Roadster - re
 
-    if True:
-        plt.figure()
-        plt.plot(phi_lat, flux)
-        plt.xlabel('radius/km', fontsize=14)
-        plt.ylabel('Proton Flux/cm^-2s^-1', fontsize=14)
-        plt.show()
 
-    '''
+    ''' 
      if True:
         plt.figure()
         plt.plot(hours, r_Roadster)
@@ -145,3 +140,4 @@ if __name__=="__main__":
         plt.ylabel('Geocenter radius or altitude (km)', fontsize=14)
         plt.show()
     '''
+print (flux)
