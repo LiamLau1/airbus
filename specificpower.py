@@ -102,22 +102,22 @@ if __name__=="__main__":
         #ax  = fig.add_subplot(1, 1, 1, projection='3d')
 
         x, y, z = Rpos
-        x = np.concatenate((np.linspace(-30000,lon.min(), 1000),np.linspace(lon.max(),30000, 1000)),axis=0)
-        y = np.concatenate((np.linspace(-30000,lon.min(), 1000),np.linspace(lon.max(),30000, 1000)),axis=0)
-        z = np.concatenate((np.linspace(-30000,lon.min(), 1000),np.linspace(lon.max(),30000, 1000)),axis=0)
+        #x = np.concatenate((np.linspace(-30000,lon.min(), 1000),np.linspace(lon.max(),30000, 1000)),axis=0)
+        #y = np.concatenate((np.linspace(-30000,lon.min(), 1000),np.linspace(lon.max(),30000, 1000)),axis=0)
+        #z = np.concatenate((np.linspace(-30000,lon.min(), 1000),np.linspace(lon.max(),30000, 1000)),axis=0)
         radius = []
         phi_lat = []
-        for i in range(0,x.shape[0]):#changed from Rpos.shape[1]
+        for i in range(0,Rpos.shape[1]):#changed from Rpos.shape[1], x.shape[0]
             radii = sqrt(x[i]**2 + y[i]**2 + z[i]**2)
             radius.append(radii)
-        for i in range(0,x.shape[0]):
+        for i in range(0,Rpos.shape[1]):
             lat_calc = pi/2 - acos(z[i]/radius[i]) 
             phi_lat.append(lat_calc)
 
         flux = []
         Lvalue = [] # McIlwain Parameter
 
-        for i in range(0,x.shape[0]):
+        for i in range(0,Rpos.shape[1]):
             altrad = phi_lat[i]*pi/180.0 #magnetic latitude, not latitude ( +/- 11 deg ) 
             # get the field by simple dipole, value in nanoteslas
             BetaValueF = 30610.0*sqrt(cos(1.57-altrad)*cos(1.57-altrad)*3.0+1.0)/(radius[i]**3)
@@ -211,12 +211,12 @@ def integrand2(E, f, p, b):
     return b*((math.sqrt((e*p/e*E) + 4*di**2 * (1-e*p/e*E)/l**2) - math.sqrt(e*p/e*E)))*(f/120000) * math.exp(-E/120000) # don't need e * as we're integrating dE
 
 def integrand1(E, f, p, b):
-    return b*(1-math.sqrt(e*p/e*E))*(f/120000) * math.exp(-E/120000)  # don't need e* as we're integrating dE
+    return b*(1-math.sqrt(e*p/e*E))*(f/120000) * math.exp(-E/120000)  # don't need e* as we're integrating dE, 120000
 
 w = np.array([])
 # we now iterate at each location the integral with differing flux values which changes U, B and thus the integrands. We now have args to show the changing parameter
 for f in flux:
-    U = 3*k*T * f * (10**4) /(2*100)  #U as a function of f, !!!!!! NEED TO TAKE INTO ACCOUNT NOT ALL PROTONS CONTRIBUTE TO POTENTIAL DIFFERENCE SOMEHOW MODEL THIS
+    U = 3*k*T * f *(10**4) /(2*100)  #U as a function of f, !!!!!! NEED TO TAKE INTO ACCOUNT NOT ALL PROTONS CONTRIBUTE TO POTENTIAL DIFFERENCE SOMEHOW MODEL THIS
     B = 2*pi*e*U/(rho * di) #constant as a function of the parameter U
     integral2 = quad(integrand2, 100000, np.inf, args=(f,U,B)) # I'm not sure what the root E* is, initially say 100000
     integral = quad(integrand1, e*U, 100000, args=(f,U,B)) # I'm not sure what the root E* is
