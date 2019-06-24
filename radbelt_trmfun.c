@@ -133,7 +133,7 @@ double simulate (double radius, double lat) {
     * Proton energy in units MeV
     */
    En[0] = 1;
-   En[1] = 0.2;
+   En[1] = 0.1;
    En[2] = 0.3;
    En[3] = 0.4;
    En[NUMENERG-1] = 50.0;
@@ -148,7 +148,7 @@ double simulate (double radius, double lat) {
    }
    
    //printf("%f",mProt[0]);
-   return mProt[0];
+   return  mProt[1] - mProt[0]; //changed from mProt[0] NEED TO LOOK AT WHAT SUBTRACT WHAT
 
    /* free up arrays */
    free(MAPPRTNS);
