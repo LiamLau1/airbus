@@ -75,7 +75,7 @@ Rposecl = Roadster.at(time).ecliptic_position().km
 
 #print(Rpos.shape)
 
-re = 6378.
+re = 6378
 
 theta = np.linspace(0, twopi, 201)
 
@@ -94,7 +94,7 @@ Z = 13
 # coulomb constant
 Q = 1/(4*pi*epsilon_0)
 # Temperature of the plasma
-T = 1000
+T = 5000
 # number density of aluminium (FCC)
 N = 6 * 10 **28
 # density of aluminium
@@ -119,7 +119,7 @@ def collision(E):
 
 #def path(n, E):
 #    return (1-a**(3*(n+1)/2))/(1-a**(3/2))*E**(3/2)
-M = 5*3 * 120000 #constant for E0
+M = 5**3 * 120000 #constant for E0
 def integrand2(E, f, p, b, Ls):
     E0 = M * (Ls ** -3)
     if E <= TE:
@@ -135,14 +135,15 @@ def integrand1(E, f, p, b, Ls):
 
 def g(r):
     # we now numerically integrate with differing flux values due to changing r We now have args to show the changing parameter
-    f = simlib.simulate(c_double(r),c_double(0))  * 10# due to the axisymmetry we have lattitude 0, scaled for Jupiter
+    f = simlib.simulate(c_double(r),c_double(0)) * 10# due to the axisymmetry we have lattitude 0, scaled for Jupiter
     U = 3*k*T*f /(2)  #U as a function of f 
     B = 2*pi*e*U/(rho * di) #constant as a function of the parameter U
     altrad = 0 #equatorial
-    BetaValueF = 30610.0*sqrt(cos(1.57-altrad)*cos(1.57-altrad)*3.0+1.0)/(r**3)
-    bottomF = r **6
-    bottomF = 4 - (BetaValueF*BetaValueF*bottomF/(3.06e4*3.06e4))
-    L =  3*sqrt(r**2)/(bottomF*10**4)
+    #BetaValueF = 30610.0*sqrt(cos(1.57-altrad)*cos(1.57-altrad)*3.0+1.0)/(r**3)
+    #bottomF = r **6
+    #bottomF = 4 - (BetaValueF*BetaValueF*bottomF/(3.06e4*3.06e4))
+    #L =  3*sqrt(r**2)/(bottomF*re)
+    L = r/re
     integral2 = quad(integrand2, 100000, np.inf, args=(f,U,B,L)) # I'm not sure what the root E* is, initially say 100000
     integral = quad(integrand1, e*U, 100000, args=(f,U,B,L)) # I'm not sure what the root E* is
     integral2 = [x/e for x in integral2] # converting into watts/kg
@@ -178,7 +179,7 @@ alt_roadster = r_Roadster - re
 
 ### Main algorithm ###
 #from the specific power orbit we know the peak is between this range
-up_lim = 30000
+up_lim = 40000
 low_lim = 10000
 iterationN = 4 # number of iterations- converges to 3dp in 3 iterations
 
@@ -190,7 +191,7 @@ def iterate(n,a,b):
     if n == 0:
         return a
     else:
-        rs = np.linspace(a,b,1000)
+        rs = np.linspace(a,b,5000)
         ws = list(map(g, rs)) # compute all the ws for all the rs, need list to convert map and zip objects into lists
         pairs = list(zip(rs,ws)) #create tuples of rs and ws
         rstemp = [i[0] for i in sorted(pairs, key=takeSecond, reverse = True)[0:2]] #sorts (rs,ws) by high to low ws then taking the first two tuples and then placing their rs into a list
@@ -216,7 +217,7 @@ while iterationN != 0:
     iterationN -= 1
 ###########################################
 if iterationN== 0:
-    print((r0new+r1new)/2)
+    print((r0new+r1new)/(2*re))
 
 
 x, y, z = Rpos
@@ -244,11 +245,12 @@ Lvalue = [] # McIlwain Parameter
 for i in range(0,x.shape[0]):
     altrad = phi_lat[i]*pi/180.0 #magnetic latitude, not latitude ( +/- 11 deg )
     # get the field by simple dipole, value in nanoteslas
-    BetaValueF = 30610.0*sqrt(cos(1.57-altrad)*cos(1.57-altrad)*3.0+1.0)/(radius[i]**3)
+    #BetaValueF = 30610.0*sqrt(cos(1.57-altrad)*cos(1.57-altrad)*3.0+1.0)/(radius[i]**3)
     #compute L value
-    bottomF = radius[i]**6
-    bottomF = 4 - (BetaValueF*BetaValueF*bottomF/(3.06e4*3.06e4))
-    Lvalue.append(3*sqrt(radius[i]**2)/(bottomF * 10**4)) #added 10^4 to normalise to within the accepted values of L
+    #bottomF = radius[i]**6
+    #bottomF = 4 - (BetaValueF*BetaValueF*bottomF/(3.06e4*3.06e4))
+    #Lvalue.append(3*sqrt(radius[i]**2)/(bottomF * re)) #added 10^4 to normalise to within the accepted values of L
+    Lvalue.append(radius[i]/(re * (cos(altrad) **2)))
 for r in radius:
     flux.append(simlib.simulate(c_double(r),c_double(phi_lat[i])) * 10) #factor of 10 by scaling Jupiter
 
@@ -260,21 +262,50 @@ for k in radius:
 
 #print(iterate(iterationN, low_lim,up_lim))
 
+#### Code to make equal aspect ratio
+def axisEqual3D(ax):
+    extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
+    sz = extents[:,1] - extents[:,0]
+    centers = np.mean(extents, axis=1)
+    maxsize = max(abs(sz)) * 5 * 10**5
+    r = maxsize/2
+    for ctr, dim in zip(centers, 'xyz'):
+        getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
 
+#### SCALING FOR JUPITER
+x = x * 69911/re
+y = y * 69911/re
+z = z * 69911/re
+lons =  [p * 69911/re for p in lons]
+lats = [q * 69911/re for q in lats]
 
-
-
-
-fig = plt.figure(figsize=[10, 8])  # [12, 10]
-ax  = fig.add_subplot(1, 1, 1, projection='3d')
+#fig = plt.figure(figsize=[10, 8])  # [12, 10]
+#ax  = fig.add_subplot(1, 1, 1, projection='3d')
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+#ax.set_aspect(aspect='equal')
+axisEqual3D(ax)
+ax.set_xlabel('x/ km', fontsize = 15)
+ax.set_ylabel('y/ km', fontsize = 15)
+ax.set_zlabel('z/ km', fontsize = 15)
 ax.plot(x, y, z)
 img = ax.scatter(x, y, z, c=w)
 for x, y, z in lons:
     ax.plot(x, y, z, '-k')
 for x, y, z in lats:
     ax.plot(x, y, z, '-k')
-fig.colorbar(img)
+#fig.colorbar(img)
+'''
+max_range = np.array([x.max()-x.min(), y.max()-y.min(), z.max()-z.min()]).max() / 2.0
 
+mid_x = (x.max()+x.min()) * 0.5
+mid_y = (y.max()+y.min()) * 0.5
+mid_z = (z.max()+z.min()) * 0.5
+ax.set_xlim(mid_x - max_range, mid_x + max_range)
+ax.set_ylim(mid_y - max_range, mid_y + max_range)
+ax.set_zlim(mid_z - max_range, mid_z + max_range)
+'''
+plt.savefig("/home/liamlhlau/Documents/airbus/jupiteroptimum.svg")
 plt.show()
 
 

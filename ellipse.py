@@ -1,6 +1,6 @@
 #!/usr/bin/python
 from ctypes import *
-from math import acos
+from math import acos, atan2
 from numpy import sqrt, sin, cos, pi
 import scipy.integrate as integrate
 from mpl_toolkits.mplot3d import Axes3D
@@ -101,10 +101,33 @@ if __name__=="__main__":
 
         #ax  = fig.add_subplot(1, 1, 1, projection='3d')
 
-        x, y, z = Rpos
-        x = np.concatenate((np.linspace(-30000,lon.min(), 1000),np.linspace(lon.max(),30000, 1000)),axis=0)
-        y = np.concatenate((np.linspace(-30000,lon.min(), 1000),np.linspace(lon.max(),30000, 1000)),axis=0)
-        z = np.concatenate((np.linspace(-30000,lon.min(), 1000),np.linspace(lon.max(),30000, 1000)),axis=0)
+        #x, y, z = Rpos
+        sa = 15900
+        sb = 14240
+        sc = sqrt((sa**2) - (sb**2))
+        x = np.concatenate((np.linspace(-sa,lon.min() + sc, 1000),np.linspace(lon.max() - sc,sa, 1000)),axis=0)
+        #x = x[(abs(x) <  8500)]
+        #x = np.delete(x,[0,1])
+        #xtemp = np.delete(xtemp,0)
+        z = [+sqrt((sb**2) - (sb**2/sa **2) *(xpos ** 2)) for xpos in x]
+        ztemp = [-k for k in z]
+        z = np.asarray(z)
+        ztemp = np.asarray(ztemp)
+        #x = np.concatenate((x,xtemp), axis = 0)
+        x = [pk - sc for pk in x]
+        xtemp = x
+        x = np.asarray(x)
+        xtemp = np.asarray(xtemp)
+        #xsk = np.concatenate((x,xtemp),axis = 0)
+        #zsk = np.concatenate((z,ztemp),axis = 0)
+        #z = np.concatenate((z,ztemp), axis = 0)
+        y = np.zeros(x.shape[0], dtype=float)
+        theta1 = [atan2(pz,px) for px,pz in zip(x,z)]
+        theta1 = np.asarray(theta1)
+        theta2 = [atan2(pz2,px2) for px2,pz2 in zip(xtemp,ztemp)]
+        theta2 = np.asarray(theta2)
+
+
         radius = []
         phi_lat = []
         for i in range(0,x.shape[0]):#changed from Rpos.shape[1], x.shape[0]
@@ -124,9 +147,39 @@ if __name__=="__main__":
             #compute L value 
             bottomF = radius[i]**6
             bottomF = 4 - (BetaValueF*BetaValueF*bottomF/(3.06e4*3.06e4))
-            Lvalue.append(3*sqrt(radius[i]**2)/(bottomF * 10**4)) #added 10^4 to normalise to within the accepted values of L
+            #Lvalue.append(3*sqrt(radius[i]**2)/(bottomF * re)) #added 10^4 to normalise to within the accepted values of L
+            Lvalue.append(radius[i]/(re *(cos(altrad)**2)))
         for r, phi in zip(radius, phi_lat):
-            flux.append(simlib.simulate(c_double(r),c_double(phi))*10)
+            flux.append(simlib.simulate(c_double(r),c_double(phi))) #for earth
+        flux = np.asarray(flux)
+        Lvalue = np.asarray(Lvalue)
+
+        radiustemp = []
+        phi_lattemp = []
+        for i in range(0,xtemp.shape[0]):#changed from Rpos.shape[1], x.shape[0]
+            radiitemp = sqrt(xtemp[i]**2 + y[i]**2 + ztemp[i]**2)
+            radiustemp.append(radiitemp)
+        for i in range(0,xtemp.shape[0]):
+            lat_calctemp = pi/2 - acos(ztemp[i]/radius[i]) 
+            phi_lattemp.append(lat_calctemp)
+
+        fluxtemp = []
+        Lvaluetemp = [] # McIlwain Parameter
+
+        for i in range(0,xtemp.shape[0]):
+            altradtemp = phi_lattemp[i]*pi/180.0 #magnetic latitude, not latitude ( +/- 11 deg ) 
+            # get the field by simple dipole, value in nanoteslas
+            BetaValueFtemp = 30610.0*sqrt(cos(1.57-altradtemp)*cos(1.57-altradtemp)*3.0+1.0)/(radiustemp[i]**3)
+            #compute L value 
+            bottomFtemp = radiustemp[i]**6
+            bottomFtemp = 4 - (BetaValueFtemp*BetaValueFtemp*bottomFtemp/(3.06e4*3.06e4))
+            #Lvalue.append(3*sqrt(radius[i]**2)/(bottomF * re)) #added 10^4 to normalise to within the accepted values of L
+            Lvaluetemp.append(radiustemp[i]/(re *(cos(altradtemp)**2)))
+        for r, phi in zip(radiustemp, phi_lattemp):
+            fluxtemp.append(simlib.simulate(c_double(r),c_double(phi))) #for earth
+        fluxtemp = np.asarray(fluxtemp)
+        Lvaluetemp = np.asarray(Lvaluetemp)
+
 
 
 
@@ -162,7 +215,7 @@ if __name__=="__main__":
 import matplotlib.pyplot as plt
 from scipy.integrate import quad
 import numpy as np
-from scipy.constants import e,k, pi, epsilon_0
+from scipy.constants import e,k, pi, epsilon_0, G
 import math
 
 # mass number
@@ -174,7 +227,7 @@ Z = 13
 # coulomb constant
 Q = 1/(4*pi*epsilon_0)
 # Temperature of the plasma
-T = 10000 #PARAMETER
+T = 5000 #PARAMETER
 # number density of aluminium (FCC)
 N = 6 * 10 **28
 # density of aluminium
@@ -222,27 +275,83 @@ for f,L in zip(flux,Lvalue):
     integral2 = [x/e for x in integral2] # converting into watts/kg
     integral = [x/e for x in integral] # converting into watts/kg
     w = np.append(w, integral[0] + integral2[0])
+wtemp = np.array([])
+# we now iterate at each location the integral with differing flux values which changes U, B and thus the integrands. We now have args to show the changing parameter
+for f,L in zip(fluxtemp,Lvaluetemp):
+    U = 3*k*T * f /(2)  #U as a function of f
+    B = 2*pi*e*U/(rho * di) #constant as a function of the parameter U
+    M = 5**3 * 120000 #constant for E0
+    E0temp = M * (L**-3)
+    integral2temp = quad(integrand2, 100000, np.inf, args=(f,U,B,E0temp)) # I'm not sure what the root E* is, initially say 100000
+    integraltemp = quad(integrand1, e*U, 100000, args=(f,U,B,E0temp)) # I'm not sure what the root E* is
+    integral2temp = [x/e for x in integral2temp] # converting into watts/kg
+    integraltemp = [x/e for x in integraltemp] # converting into watts/kg
+    wtemp = np.append(wtemp, integraltemp[0] + integral2temp[0])
 
+ME = 5.972 * 10**24
+TimeP = 2 * pi * sqrt(((sa*10**3) **3)/(G * ME))
+#omega = 2* pi /TimeP
+ecc = math.sqrt(1-((sb**2)/(sa**2)))
+Eori = [acos((1-(r/sa))/ecc) for r in radius]
+Etemp = [acos((1-(r2/sa))/ecc) for r2 in radiustemp]
+tori = [TimeP/(2*pi)*(E-ecc*cos(E)) for E in Eori]
+ttemp = [TimeP/(2*pi)*(E-ecc*cos(E)) for E in Etemp]
 #print(tuple(map(sum, zip(integral, integral2))))
 
-fig = plt.figure(figsize=[10, 8])  # [12, 10]
-ax  = fig.add_subplot(1, 1, 1, projection='3d')
+#### Code to make equal aspect ratio
+def axisEqual3D(ax):
+    extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
+    sz = extents[:,1] - extents[:,0]
+    centers = np.mean(extents, axis=1)
+    maxsize = max(abs(sz)) * 6 * 10**4
+    r = maxsize/2
+    for ctr, dim in zip(centers, 'xyz'):
+        getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
+
+
+print(flux.shape[0])
+print(Lvalue.shape[0])
+print(w.shape[0])
+
+
+#fig = plt.figure(figsize=[10, 8])  # [12, 10]
+#ax  = fig.add_subplot(1, 1, 1, projection='3d')
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+#ax.set_aspect(aspect='equal')
+axisEqual3D(ax)
+ax.set_xlabel('x/ km', fontsize = 15)
+ax.set_ylabel('y/ km', fontsize = 15)
+ax.set_zlabel('z/ km', fontsize = 15)
 ax.plot(x, y, z)
+ax.plot(xtemp,y,ztemp)
 img = ax.scatter(x, y, z, c=w)
+img2 = ax.scatter(xtemp,y,ztemp, c = wtemp)
+
+
 for x, y, z in lons:
     ax.plot(x, y, z, '-k')
 for x, y, z in lats:
     ax.plot(x, y, z, '-k')
 fig.colorbar(img)
+fig.colorbar(img2)
+
 
 #plt.figure()
 #plt.plot(Lvalue,flux, '.')
 #plt.plot(radius,flux, '.')
 plt.figure()
-plt.plot(Lvalue,w)
+plt.plot(theta1,w,'b')
+plt.plot(theta2,wtemp,'b')
+plt.figure()
+plt.plot(tori,w,'r')
+plt.figure()
+plt.plot(ttemp,wtemp,'r')
 plt.show()
+
 
 print((w.mean(), w.std()/w.shape[0]))
 print(w.max())
 Lvalue = np.asarray(Lvalue)
 print((Lvalue.mean(), Lvalue.std()/Lvalue.shape[0]))
+

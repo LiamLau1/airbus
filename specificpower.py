@@ -124,9 +124,10 @@ if __name__=="__main__":
             #compute L value 
             bottomF = radius[i]**6
             bottomF = 4 - (BetaValueF*BetaValueF*bottomF/(3.06e4*3.06e4))
-            Lvalue.append(3*sqrt(radius[i]**2)/(bottomF * 10**4)) #added 10^4 to normalise to within the accepted values of L
+            #Lvalue.append(3*sqrt(radius[i]**2)/(bottomF * re)) #added 10^4 to normalise to within the accepted values of L
+            Lvalue.append(radius[i]/(re *(cos(altrad)**2)))
         for r, phi in zip(radius, phi_lat):
-            flux.append(simlib.simulate(c_double(r),c_double(phi))*10)
+            flux.append(simlib.simulate(c_double(r),c_double(phi))*10) #for Jupiter
 
 
 
@@ -174,7 +175,7 @@ Z = 13
 # coulomb constant
 Q = 1/(4*pi*epsilon_0)
 # Temperature of the plasma
-T = 10000 #PARAMETER
+T = 5000 #PARAMETER
 # number density of aluminium (FCC)
 N = 6 * 10 **28
 # density of aluminium
@@ -225,8 +226,27 @@ for f,L in zip(flux,Lvalue):
 
 #print(tuple(map(sum, zip(integral, integral2))))
 
-fig = plt.figure(figsize=[10, 8])  # [12, 10]
-ax  = fig.add_subplot(1, 1, 1, projection='3d')
+#### Code to make equal aspect ratio
+def axisEqual3D(ax):
+    extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
+    sz = extents[:,1] - extents[:,0]
+    centers = np.mean(extents, axis=1)
+    maxsize = max(abs(sz)) * 3 * 10**4
+    r = maxsize/2
+    for ctr, dim in zip(centers, 'xyz'):
+        getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
+
+
+
+#fig = plt.figure(figsize=[10, 8])  # [12, 10]
+#ax  = fig.add_subplot(1, 1, 1, projection='3d')
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+#ax.set_aspect(aspect='equal')
+axisEqual3D(ax)
+ax.set_xlabel('x/ km', fontsize = 15)
+ax.set_ylabel('y/ km', fontsize = 15)
+ax.set_zlabel('z/ km', fontsize = 15)
 ax.plot(x, y, z)
 img = ax.scatter(x, y, z, c=w)
 for x, y, z in lons:
