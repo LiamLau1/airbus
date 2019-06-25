@@ -119,25 +119,32 @@ def collision(E):
 
 #def path(n, E):
 #    return (1-a**(3*(n+1)/2))/(1-a**(3/2))*E**(3/2)
-
-def integrand2(E, f, p, b):
+M = 5*3 * 120000 #constant for E0
+def integrand2(E, f, p, b, Ls):
+    E0 = M * (Ls ** -3)
     if E <= TE:
         n = 0
     else:
         n = math.ceil(math.log(TE / E, a))
     l = C*(1-a**(3*(n+1)/2))/(1-a**(3/2))*(e*E - e*p)**(3/2)
-    return b*((math.sqrt((e*p/e*E) + 4*di**2 * (1-e*p/e*E)/l**2) - math.sqrt(e*p/e*E)))*(f/120000) * math.exp(-E/120000) # don't need e * as we're integrating dE
+    return b*((math.sqrt((e*p/e*E) + 4*di**2 * (1-e*p/e*E)/l**2) - math.sqrt(e*p/e*E)))*(f/E0) * math.exp(-E/E0) # don't need e * as we're integrating dE
 
-def integrand1(E, f, p, b):
-    return b*(1-math.sqrt(e*p/e*E))*(f/120000) * math.exp(-E/120000)  # don't need e* as we're integrating dE, 120000
+def integrand1(E, f, p, b, Ls):
+    E0= M * (Ls ** -3)
+    return b*(1-math.sqrt(e*p/e*E))*(f/E0) * math.exp(-E/E0)  # don't need e* as we're integrating dE, E0temp
 
 def g(r):
     # we now numerically integrate with differing flux values due to changing r We now have args to show the changing parameter
-    f = simlib.simulate(c_double(r),c_double(0)) # due to the axisymmetry we have lattitude 0
-    U = 3*k*T * f /(2)  #U as a function of f 
+    f = simlib.simulate(c_double(r),c_double(0))  * 10# due to the axisymmetry we have lattitude 0, scaled for Jupiter
+    U = 3*k*T*f /(2)  #U as a function of f 
     B = 2*pi*e*U/(rho * di) #constant as a function of the parameter U
-    integral2 = quad(integrand2, 100000, np.inf, args=(f,U,B)) # I'm not sure what the root E* is, initially say 100000
-    integral = quad(integrand1, e*U, 100000, args=(f,U,B)) # I'm not sure what the root E* is
+    altrad = 0 #equatorial
+    BetaValueF = 30610.0*sqrt(cos(1.57-altrad)*cos(1.57-altrad)*3.0+1.0)/(r**3)
+    bottomF = r **6
+    bottomF = 4 - (BetaValueF*BetaValueF*bottomF/(3.06e4*3.06e4))
+    L =  3*sqrt(r**2)/(bottomF*10**4)
+    integral2 = quad(integrand2, 100000, np.inf, args=(f,U,B,L)) # I'm not sure what the root E* is, initially say 100000
+    integral = quad(integrand1, e*U, 100000, args=(f,U,B,L)) # I'm not sure what the root E* is
     integral2 = [x/e for x in integral2] # converting into watts/kg
     integral = [x/e for x in integral] # converting into watts/kg
     w = integral[0] + integral2[0]
@@ -243,7 +250,7 @@ for i in range(0,x.shape[0]):
     bottomF = 4 - (BetaValueF*BetaValueF*bottomF/(3.06e4*3.06e4))
     Lvalue.append(3*sqrt(radius[i]**2)/(bottomF * 10**4)) #added 10^4 to normalise to within the accepted values of L
 for r in radius:
-    flux.append(simlib.simulate(c_double(r),c_double(phi_lat[i])))
+    flux.append(simlib.simulate(c_double(r),c_double(phi_lat[i])) * 10) #factor of 10 by scaling Jupiter
 
 w = np.array([])
 wvalue = g(optimalr)
