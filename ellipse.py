@@ -295,7 +295,21 @@ ecc = math.sqrt(1-((sb**2)/(sa**2)))
 Eori = [acos((1-(r/sa))/ecc) for r in radius]
 Etemp = [acos((1-(r2/sa))/ecc) for r2 in radiustemp]
 tori = [TimeP/(2*pi)*(E-ecc*cos(E)) for E in Eori]
+tori = np.asarray(tori)
+tori = [tp + abs(tori.min()) for tp in tori]
+tori = np.asarray(tori)
 ttemp = [TimeP/(2*pi)*(E-ecc*cos(E)) for E in Etemp]
+ttemp = np.asarray(ttemp)
+ttemp = [tp + abs(ttemp.min()) for tp in ttemp]
+ttemp = [t + tori.max() for t in ttemp]
+ttemp = np.asarray(ttemp)
+ttemp = np.flip(ttemp)
+np.savetxt('tori.out',tori,delimiter=',')
+np.savetxt('w.out',w,delimiter=',')
+np.savetxt('ttemp.out',ttemp,delimiter=',')
+np.savetxt('wtemp.out',wtemp,delimiter=',')
+
+
 #print(tuple(map(sum, zip(integral, integral2))))
 
 #### Code to make equal aspect ratio
@@ -309,10 +323,7 @@ def axisEqual3D(ax):
         getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
 
 
-print(flux.shape[0])
-print(Lvalue.shape[0])
-print(w.shape[0])
-
+print(TimeP)
 
 #fig = plt.figure(figsize=[10, 8])  # [12, 10]
 #ax  = fig.add_subplot(1, 1, 1, projection='3d')
@@ -333,8 +344,9 @@ for x, y, z in lons:
     ax.plot(x, y, z, '-k')
 for x, y, z in lats:
     ax.plot(x, y, z, '-k')
-fig.colorbar(img)
-fig.colorbar(img2)
+clb = fig.colorbar(img)
+clb2 = fig.colorbar(img2)
+clb2.set_label('Specific Power/ (W/kg)', labelpad=-40, y=1.05, rotation=0, fontsize = 15)
 
 
 #plt.figure()
@@ -344,8 +356,9 @@ plt.figure()
 plt.plot(theta1,w,'b')
 plt.plot(theta2,wtemp,'b')
 plt.figure()
+plt.xlabel('Time of orbit / seconds',fontsize = 15)
+plt.ylabel('Specific Power / (W/kg)',fontsize = 15)
 plt.plot(tori,w,'r')
-plt.figure()
 plt.plot(ttemp,wtemp,'r')
 plt.show()
 
